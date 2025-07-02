@@ -1,24 +1,25 @@
 # MCP Server for Things3
 
-A robust MCP (Model Context Protocol) server providing comprehensive integration with Things3, allowing you to create, manage, and search tasks and projects through the MCP protocol. Features improved error handling, secure URL encoding, and enhanced AppleScript integration.
+A robust MCP (Model Context Protocol) server providing comprehensive integration with Things3, allowing you to create, manage, and search tasks and projects through the MCP protocol. Features ID-based task management, JSON-based AppleScript integration, and Things3 philosophy guidance.
 
 ## Features
 
-- ✅ **Create Projects**: Create new projects in Things3 with full metadata support
-- ✅ **Create Todos**: Create new to-dos with detailed properties including checklists, tags, and dates
-- ✅ **View Tasks**: List tasks from inbox, today's list, or all projects
-- ✅ **Complete Tasks**: Mark todos as completed by searching for their title
+- ✅ **Create Projects & Todos**: Full metadata support with checklists, tags, and dates
+- ✅ **Update Tasks**: Modify any task property using task IDs with auth token support
+- ✅ **View Tasks**: List tasks from Inbox, Today, Upcoming, Anytime, or Projects
+- ✅ **Complete Tasks**: Mark todos as completed using their ID
 - ✅ **Search Functionality**: Search through all todos by title or content
-- ✅ **Robust Error Handling**: Comprehensive validation and error recovery
-- ✅ **Secure URL Encoding**: Proper handling of special characters and unicode
-- ✅ **AppleScript Integration**: Safe, non-JSON string concatenation approach
+- ✅ **Things3 Philosophy**: Built-in guidance for effective task management
+- ✅ **JSON Integration**: Reliable data extraction using Foundation framework
+- ✅ **Today Overload Warning**: Alerts when Today list exceeds 4 items
 
 ## Installation
 
 ### Prerequisites
 - macOS with Things3 installed
-- Python 3.8+ 
+- Python 3.10+ 
 - Things3 running (for real-time operations)
+- Things3 auth token (for update operations)
 
 ### Install the Server
 
@@ -35,6 +36,18 @@ A robust MCP (Model Context Protocol) server providing comprehensive integration
 
 3. The server will be available as `mcp-server-things3`
 
+### Auth Token Setup
+
+For update operations, you need to set your Things3 auth token:
+
+1. Open Things3
+2. Go to Settings → General → Enable Things URLs → Manage
+3. Copy your auth token
+4. Set the environment variable:
+   ```bash
+   export THINGS3_AUTH_TOKEN="your-token-here"
+   ```
+
 ## Tools Available
 
 ### View Operations
@@ -42,17 +55,27 @@ A robust MCP (Model Context Protocol) server providing comprehensive integration
 #### `view-inbox`
 View all todos in the Things3 inbox.
 - **Parameters**: None
-- **Returns**: List of inbox todos with due dates and scheduling info
+- **Returns**: List of inbox todos with IDs, titles, tags, and metadata
+
+#### `view-todos`
+View all todos in today's list with overload warning.
+- **Parameters**: None
+- **Returns**: List of today's todos with IDs and warning if >4 items
+
+#### `view-upcoming`
+View scheduled future tasks in Things3's Upcoming list.
+- **Parameters**: None
+- **Returns**: Tasks organized by date, showing what's hibernating until scheduled
+
+#### `view-anytime`
+View all unscheduled active tasks in Things3's Anytime list.
+- **Parameters**: None
+- **Returns**: Tasks organized by project/area, ready whenever you are
 
 #### `view-projects`
 View all projects in Things3.
 - **Parameters**: None  
-- **Returns**: List of all projects with their titles
-
-#### `view-todos`
-View all todos in today's list.
-- **Parameters**: None
-- **Returns**: List of today's todos with metadata
+- **Returns**: List of all projects with IDs and titles
 
 ### Creation Operations
 
@@ -103,15 +126,31 @@ Creates a new to-do in Things3.
 
 ### Management Operations
 
+#### `update-things3-todo`
+Update an existing to-do in Things3. Requires auth token.
+- **Required**: `id` (string) - Todo ID from view/search results
+- **Optional**: All todo fields (title, notes, when, deadline, tags, etc.)
+- **Special**: `completed`, `canceled` (boolean) for status changes
+- **Returns**: Success message with philosophical guidance
+
+**Example**:
+```json
+{
+  "id": "2DCAbD81QBc6oQbzaNjFhM",
+  "when": "tomorrow",
+  "tags": ["urgent", "review"]
+}
+```
+
 #### `complete-things3-todo`
-Mark a todo as completed by searching for its title.
-- **Required**: `title` (string) - Title or partial title to search for
+Mark a todo as completed using its ID.
+- **Required**: `id` (string) - Todo ID from view/search results
 - **Returns**: Success/failure message
 
 **Example**:
 ```json
 {
-  "title": "Review design"
+  "id": "2DCAbD81QBc6oQbzaNjFhM"
 }
 ```
 
@@ -165,24 +204,24 @@ Add to your MCP client configuration (e.g., Claude Desktop config):
 ### Components
 
 - **`server.py`**: Main MCP server implementation with tool definitions and handlers
-- **`applescript_handler.py`**: Robust AppleScript integration with safe data parsing
+- **`applescript_handler.py`**: AppleScript integration with JSON serialization via Foundation framework
+- **`applescript/`**: Dedicated AppleScript files for each bulk operation using JSON output
 - **URL Encoding**: Proper x-callback-url parameter encoding for special characters
 - **Error Handling**: Comprehensive validation and graceful error recovery
 
-### Security Features
+### Key Features
 
-- **Input Sanitization**: All user inputs are properly escaped for AppleScript
-- **URL Encoding**: Special characters and unicode properly handled in URLs
-- **Validation**: Things3 availability checked before operations
-- **Error Recovery**: Graceful handling of AppleScript and system errors
+- **JSON Serialization**: Uses macOS Foundation framework for reliable data extraction
+- **ID-Based Operations**: All tasks tracked by unique IDs, not titles
+- **Auth Token Support**: Environment variable for Things3 URL scheme authentication
+- **Philosophy Integration**: Built-in guidance for effective Things3 usage
+- **Bulk Operations**: Efficient retrieval of multiple items with proper JSON structure
 
 ## Development
 
-### Running Tests
+### Testing
 
-```bash
-python test_things3.py
-```
+The server includes comprehensive logging for debugging. Individual tools can be tested through the MCP protocol once configured with your client.
 
 ### Debugging
 
@@ -225,6 +264,11 @@ asyncio.run(main())
 - The server now properly handles unicode and special characters
 - If issues persist, check the logs for specific URL construction errors
 
+**"Authentication Required" for update operations**
+- Ensure THINGS3_AUTH_TOKEN environment variable is set
+- Get token from Things3 Settings → General → Enable Things URLs → Manage
+- Each device has its own unique token
+
 ### Performance Notes
 
 - AppleScript operations may have slight delays
@@ -237,9 +281,18 @@ MIT License - see LICENSE file for details.
 
 ## Changelog
 
+### v0.2.0
+- Added `update-things3-todo` tool with auth token support
+- Added `view-upcoming` and `view-anytime` tools
+- Implemented JSON serialization using Foundation framework
+- Changed to ID-based operations (no more title searching)
+- Added Today overload warnings (>4 items)
+- Added Things3 philosophy guidance in tool descriptions
+- Updated Python requirement to 3.10+
+- All responses now include task/project IDs
+
 ### v0.1.0
 - Initial release with basic CRUD operations
 - Comprehensive error handling and validation
 - Secure URL encoding and AppleScript integration
 - Search and completion functionality
-- Robust data parsing without JSON string concatenation
