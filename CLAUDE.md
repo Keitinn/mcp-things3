@@ -10,7 +10,7 @@ This is an MCP (Model Context Protocol) server that integrates with Things3, a p
 
 ### Core Components
 
-1. **`server.py`**: Main MCP server with tool definitions
+1. **`fast_server.py`**: Main FastMCP server with tool definitions
    - Handles all MCP protocol communication
    - Defines tools and their schemas
    - Manages auth token validation
