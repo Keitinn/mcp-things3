@@ -34,7 +34,12 @@ class AppleScriptHandler:
             )
             return result.stdout.strip()
         except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"Failed to execute AppleScript: {e}")
+            error_msg = f"AppleScript failed: {script_name}\n"
+            if e.stderr:
+                error_msg += f"Error: {e.stderr}\n"
+            if e.returncode:
+                error_msg += f"Exit code: {e.returncode}"
+            raise RuntimeError(error_msg)
 
     @staticmethod
     def run_script(script: str) -> str:
@@ -50,7 +55,11 @@ class AppleScriptHandler:
             )
             return result.stdout.strip()
         except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"Failed to execute AppleScript: {e}")
+            error_msg = "AppleScript execution failed\n"
+            if e.stderr:
+                error_msg += f"Error: {e.stderr}\n"
+            error_msg += f"Script: {script[:100]}..."  # Show first 100 chars
+            raise RuntimeError(error_msg)
 
     @staticmethod
     def safe_string_for_applescript(text: str) -> str:
@@ -69,6 +78,23 @@ class AppleScriptHandler:
         text = text.replace("\r", "\\r")
         
         return text
+    
+    @staticmethod
+    def normalize_task(task: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Normalize task data from AppleScript by converting 'missing value' to None.
+        """
+        if not task:
+            return task
+            
+        # Fields that can have "missing value"
+        nullable_fields = ['due_date', 'when_date', 'when', 'notes', 'tags', 'list']
+        
+        for field in nullable_fields:
+            if field in task and task[field] == "missing value":
+                task[field] = None
+                
+        return task
 
 
     @staticmethod
@@ -86,12 +112,14 @@ class AppleScriptHandler:
             
             tasks = json.loads(result)
             
-            # Ensure consistent field names (when vs when_date)
+            # Normalize and ensure consistent field names
+            normalized_tasks = []
             for task in tasks:
                 if "when" in task and "when_date" not in task:
                     task["when_date"] = task["when"]
+                normalized_tasks.append(AppleScriptHandler.normalize_task(task))
             
-            return tasks
+            return normalized_tasks
             
         except json.JSONDecodeError as e:
             print(f"Error parsing JSON from inbox tasks: {e}")
@@ -115,12 +143,14 @@ class AppleScriptHandler:
             
             tasks = json.loads(result)
             
-            # Ensure consistent field names
+            # Normalize and ensure consistent field names
+            normalized_tasks = []
             for task in tasks:
                 if "when" in task and "when_date" not in task:
                     task["when_date"] = task["when"]
+                normalized_tasks.append(AppleScriptHandler.normalize_task(task))
             
-            return tasks
+            return normalized_tasks
             
         except json.JSONDecodeError as e:
             print(f"Error parsing JSON from today's tasks: {e}")
@@ -211,12 +241,14 @@ class AppleScriptHandler:
             
             todos = json.loads(result.stdout.strip())
             
-            # Ensure consistent field names
+            # Normalize and ensure consistent field names
+            normalized_todos = []
             for todo in todos:
                 if "when" in todo and "when_date" not in todo:
                     todo["when_date"] = todo["when"]
+                normalized_todos.append(AppleScriptHandler.normalize_task(todo))
             
-            return todos
+            return normalized_todos
             
         except json.JSONDecodeError as e:
             print(f"Error parsing JSON from search: {e}")
@@ -240,12 +272,14 @@ class AppleScriptHandler:
             
             tasks = json.loads(result)
             
-            # Ensure consistent field names
+            # Normalize and ensure consistent field names
+            normalized_tasks = []
             for task in tasks:
                 if "when" in task and "when_date" not in task:
                     task["when_date"] = task["when"]
+                normalized_tasks.append(AppleScriptHandler.normalize_task(task))
             
-            return tasks
+            return normalized_tasks
             
         except json.JSONDecodeError as e:
             print(f"Error parsing JSON from upcoming tasks: {e}")
@@ -267,7 +301,10 @@ class AppleScriptHandler:
             if not result:
                 return []
             
-            return json.loads(result)
+            tasks = json.loads(result)
+            
+            # Normalize all tasks
+            return [AppleScriptHandler.normalize_task(task) for task in tasks]
             
         except json.JSONDecodeError as e:
             print(f"Error parsing JSON from anytime tasks: {e}")

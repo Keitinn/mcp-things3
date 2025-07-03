@@ -124,3 +124,33 @@ This file tracks the implementation progress for updating the Things3 MCP server
 - Consider supporting auth token through MCP initialization options/params
 - This would allow per-server configuration without environment variables
 - Current workaround: Set token in "env" section of Claude Desktop config
+
+### 2025-01-02 - FastMCP Phase 1 Complete
+- Added FastMCP dependencies (fastmcp, pydantic-settings)
+- Created config.py with Settings class for auth token management
+- Created fast_server.py with basic FastMCP implementation:
+  - check_auth_status tool to verify configuration
+  - view_inbox_fast tool as proof of concept
+- Added parallel entry point: mcp-server-things3-fast
+- Verified server starts and responds to MCP protocol
+- Auth token configuration works via environment variable
+- Ready for Phase 2: migrating remaining tools to reduce boilerplate
+
+### 2025-01-02 - FastMCP Phase 2 Complete
+- Successfully migrated ALL 9 original tools to FastMCP:
+  - view-inbox, view-projects, view-todos (with overload warning)
+  - search-things3-todos
+  - create-things3-project, create-things3-todo
+  - complete-things3-todo (with philosophical guidance)
+  - update-things3-todo (with auth check and smart responses)
+  - view-upcoming, view-anytime (with philosophical guidance)
+- All tool descriptions match originals EXACTLY (multi-line descriptions preserved)
+- Centralized URL building and execution helpers
+- Reduced code from ~800 lines to ~600 lines
+- FastMCP benefits discovered:
+  - Automatic parameter validation from type hints
+  - Clean decorator syntax with name/description parameters
+  - No manual JSON schema building
+  - Built-in error handling
+  - Simpler tool definitions (~20 lines vs ~50 lines each)
+- Server runs in parallel with original, ready for testing/switching

@@ -5,10 +5,13 @@ description = "A server implementation for interacting with Things3 app on macOS
 requires-python = ">=3.10"
 dependencies = [
     "mcp>=0.1.0",
+    "fastmcp>=0.1.0",
+    "pydantic-settings>=2.0.0",
 ]
 
 [project.scripts]
 mcp-server-things3 = "mcp_server_things3.server:main"
+mcp-server-things3-fast = "mcp_server_things3.fast_server:main"
 
 [build-system]
 requires = ["hatchling"]
