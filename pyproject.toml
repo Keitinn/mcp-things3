@@ -1,7 +1,23 @@
 [project]
-name = "mcp-server-things3"
+name = "things3-mcp"
 version = "0.1.0"
 description = "A server implementation for interacting with Things3 app on macOS through Claude AI"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [{name = "Darin Kishore", email = "darin@darinkishore.com"}]
+keywords = ["things3", "mcp", "task-management", "macos", "claude"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Scheduling",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
 requires-python = ">=3.10"
 dependencies = [
     "mcp>=0.1.0",
@@ -9,12 +25,20 @@ dependencies = [
     "pydantic-settings>=2.0.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/darinkishore/mcp-things3"
+Repository = "https://github.com/darinkishore/mcp-things3"
+Issues = "https://github.com/darinkishore/mcp-things3/issues"
+
 [project.scripts]
-mcp-server-things3 = "mcp_server_things3.fast_server:main"
+things3-mcp = "mcp_server_things3.fast_server:main"
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mcp_server_things3"]
 
 [dependency-groups]
 dev = [
