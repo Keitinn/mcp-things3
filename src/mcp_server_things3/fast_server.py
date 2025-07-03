@@ -26,6 +26,13 @@ except ImportError:
 # Create settings instance from environment
 settings = Settings()
 
+# Validate auth token on startup if provided
+if settings.auth_token:
+    logger.info("✅ Things3 auth token configured - update operations available")
+else:
+    logger.warning("⚠️ No auth token configured - update operations will fail")
+    logger.info("To configure: Set THINGS3_AUTH_TOKEN environment variable")
+
 # Create FastMCP app
 mcp = FastMCP(
     name="mcp-server-things3-fast",

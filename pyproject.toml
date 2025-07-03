@@ -16,3 +16,8 @@ mcp-server-things3-fast = "mcp_server_things3.fast_server:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+]

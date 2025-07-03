@@ -1,0 +1,1 @@
+# Tests for Things3 MCP Server
