@@ -122,23 +122,47 @@ def view_projects() -> str:
         return f"Failed to retrieve projects: {str(e)}"
 
 @mcp.tool(name="view-todos")
-def view_todos() -> str:
-    """View all todos in Things3"""
+def view_todos(list_name: str = "Today") -> str:
+    """View todos from a specific Things3 list.
+    
+    Args:
+        list_name: The list to view todos from. Valid options:
+                  - Today (default): Tasks scheduled for today
+                  - Inbox: Unprocessed tasks
+                  - Anytime: Tasks without specific scheduling
+                  - Upcoming: Tasks scheduled for future dates
+                  - Someday: Tasks deferred indefinitely
+                  - Logbook: Completed and canceled tasks
+                  - Trash: Deleted tasks
+    
+    PHILOSOPHY:
+    • Today is for commitments, not wishlists (max ~4 items)
+    • Inbox is for capture, not storage
+    • Anytime holds active tasks without deadlines
+    
+    Examples:
+    - view_todos() - Shows Today list
+    - view_todos("Inbox") - Shows unprocessed tasks
+    - view_todos("Anytime") - Shows active unscheduled tasks
+    """
     try:
         # Validate Things3 is accessible
         if not AppleScriptHandler.validate_things3_access():
             return "Things3 is not available. Please ensure Things3 is installed and running."
         
-        todos = AppleScriptHandler.get_todays_tasks() or []
+        todos = AppleScriptHandler.get_tasks_from_list(list_name) or []
         if not todos:
-            return "No todos found in Things3."
+            return f"No todos found in {list_name} list."
 
-        # Check for overload
+        # Check for overload (only for Today list)
         todo_count = len(todos)
-        if todo_count > 4:
-            response = [f"⚠️ Today's Focus ({todo_count} items - consider reviewing):"]
+        if list_name == "Today":
+            if todo_count > 4:
+                response = [f"⚠️ Today's Focus ({todo_count} items - consider reviewing):"]
+            else:
+                response = [f"Today's Focus ({todo_count} items):"]
         else:
-            response = [f"Today's Focus ({todo_count} items):"]
+            response = [f"{list_name} ({todo_count} items):"]
         
         for todo in todos:
             todo_id = todo.get("id", "")
@@ -159,10 +183,18 @@ def view_todos() -> str:
             response.append("• Move flexible items to Anytime (update with when='')")
             response.append("• Use Evening section for time-specific tasks")
 
+        # Add philosophy reminders for specific lists
+        if list_name == "Today" and todo_count > 4:
+            response.append("\n💡 Tip: Move non-critical items to Anytime or schedule for later dates")
+        elif list_name == "Inbox" and todo_count > 10:
+            response.append("\n💡 Tip: Process your inbox - decide, don't just collect")
+        
         return "\n".join(response)
+    except ValueError as e:
+        return str(e)
     except Exception as e:
-        logger.error(f"Error retrieving todos: {e}")
-        return f"Failed to retrieve todos: {str(e)}"
+        logger.error(f"Error retrieving todos from {list_name}: {e}")
+        return f"Failed to retrieve todos from {list_name}: {str(e)}"
 
 @mcp.tool(name="search-things3-todos")
 def search_things3_todos(query: str) -> str:

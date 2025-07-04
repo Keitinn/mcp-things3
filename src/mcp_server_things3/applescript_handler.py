@@ -329,3 +329,51 @@ class AppleScriptHandler:
             return int(result)
         except Exception:
             return 0
+    
+    @staticmethod
+    def get_tasks_from_list(list_name: str) -> List[Dict[str, Any]]:
+        """
+        Retrieves tasks from any Things3 list using JSON serialization.
+        Valid lists: Today, Inbox, Anytime, Upcoming, Someday, Logbook, Trash
+        """
+        try:
+            # Validate list name
+            valid_lists = ["Today", "Inbox", "Anytime", "Upcoming", "Someday", "Logbook", "Trash"]
+            if list_name not in valid_lists:
+                raise ValueError(f"Invalid list name. Valid lists: {', '.join(valid_lists)}")
+            
+            # Use the new generic JSON-based AppleScript with list name as argument
+            result = subprocess.run(
+                ['osascript', str(AppleScriptHandler.get_script_path("get_list_tasks.applescript")), list_name],
+                check=True,
+                capture_output=True,
+                text=True
+            )
+            
+            # Parse JSON directly
+            if not result.stdout.strip():
+                return []
+            
+            # Check for error response
+            output = result.stdout.strip()
+            if output.startswith('{"error":'):
+                error_data = json.loads(output)
+                raise RuntimeError(error_data.get("error", "Unknown error"))
+            
+            tasks = json.loads(output)
+            
+            # Normalize and ensure consistent field names
+            normalized_tasks = []
+            for task in tasks:
+                if "when" in task and "when_date" not in task:
+                    task["when_date"] = task["when"]
+                normalized_tasks.append(AppleScriptHandler.normalize_task(task))
+            
+            return normalized_tasks
+            
+        except json.JSONDecodeError as e:
+            print(f"Error parsing JSON from list tasks: {e}")
+            return []
+        except Exception as e:
+            print(f"Error retrieving tasks from list '{list_name}': {e}")
+            return []
