@@ -1,8 +1,9 @@
 """FastMCP implementation of Things3 MCP server."""
 
-import os
 import logging
+
 from fastmcp import FastMCP
+
 
 # Try to import relative, fall back to absolute for testing
 try:
@@ -41,6 +42,20 @@ mcp = FastMCP(
 Authentication: Some operations require a Things3 auth token. Set THINGS3_AUTH_TOKEN 
 environment variable or pass it in the Claude Desktop config."""
 )
+
+
+def format_date_readable(date_str: str) -> str:
+    """Convert Things3 date format to human readable format."""
+    if not date_str or date_str == "missing value":
+        return ""
+    
+    # Remove time portion if present
+    if " at " in date_str:
+        date_part = date_str.split(" at ")[0]
+        return date_part
+    
+    return date_str
+
 
 @mcp.tool
 def check_auth_status() -> str:
@@ -86,10 +101,11 @@ def view_projects() -> str:
         return "\n".join(response)
     except Exception as e:
         logger.error(f"Error retrieving projects: {e}")
-        return f"Failed to retrieve projects: {str(e)}"
+        return f"Failed to retrieve projects: {e!s}"
+
 
 @mcp.tool(name="view-todos")
-def view_todos(list_name: str = "Today") -> str:
+def view_todos(list_name: str = "Today", show_notes: bool = True) -> str:
     """View todos from a specific Things3 list.
     
     Args:
@@ -101,6 +117,11 @@ def view_todos(list_name: str = "Today") -> str:
                   - Someday: Tasks deferred indefinitely
                   - Logbook: Completed and canceled tasks
                   - Trash: Deleted tasks
+        
+        show_notes: Whether to display task notes (default: True).
+                   - True: Shows notes for context when processing/deciding
+                   - False: Cleaner view for scanning long lists
+                   - Recommended: True for Inbox/Today, False for Anytime/Upcoming scans
     
     PHILOSOPHY BY LIST:
     
@@ -160,79 +181,55 @@ def view_todos(list_name: str = "Today") -> str:
         else:
             response = [f"{list_name} ({todo_count} items):"]
         
-        # Special formatting for Anytime list (group by project/area)
-        if list_name == "Anytime":
-            # Group by project/area
-            loose_tasks = []
-            by_project = {}
+        # Format todos with enhanced Approach 1 style
+        for todo in todos:
+            todo_id = todo.get("id", "")
+            title = todo.get("title", "Untitled Todo").strip()
+            notes = todo.get("notes", "")
+            tags = todo.get("tags", "")
+            due_date = todo.get("due_date", "")
+            when_date = todo.get("when_date", "") or todo.get("when", "")
+            project_name = todo.get("list", "")
             
-            for task in todos:
-                project_name = task.get("list", "")
-                if project_name:
-                    if project_name not in by_project:
-                        by_project[project_name] = []
-                    by_project[project_name].append(task)
+            # Main title line
+            response.append(f"\n• {title} (id: {todo_id})")
+            
+            # Build metadata line with relevant fields
+            metadata_parts = []
+            
+            # When date
+            if when_date:
+                readable_when = format_date_readable(when_date)
+                if readable_when:
+                    metadata_parts.append(f"📅 When: {readable_when}")
+            
+            # Due date
+            if due_date:
+                readable_due = format_date_readable(due_date)
+                if readable_due:
+                    metadata_parts.append(f"Due: {readable_due}")
+            
+            # Tags
+            if tags:
+                metadata_parts.append(f"🏷️ {tags}")
+            
+            # Project/Area
+            if project_name:
+                metadata_parts.append(f"📁 {project_name}")
+            
+            # Add metadata line if we have any metadata
+            if metadata_parts:
+                response.append(f"  {' | '.join(metadata_parts)}")
+            
+            # Add notes if enabled and present
+            if show_notes and notes and notes != "missing value":
+                notes_lines = notes.strip().split('\n')
+                if len(notes_lines) == 1:
+                    response.append(f"  📝 {notes_lines[0]}")
                 else:
-                    loose_tasks.append(task)
-            
-            # Show loose tasks first
-            if loose_tasks:
-                response.append("\n📌 No Project/Area:")
-                for task in loose_tasks:
-                    todo_id = task.get("id", "")
-                    title = task.get("title", "Untitled Todo").strip()
-                    tags = task.get("tags", "")
-                    due_date = task.get("due_date", "")
-                    
-                    line = f"  • {title}"
-                    if due_date and due_date != "missing value" and due_date != "":
-                        line += f" ⚠️ Due: {due_date.split(',')[0]}"
-                    if tags:
-                        line += f" #{tags.replace(',', ' #')}"
-                    line += f" (id: {todo_id})"
-                    response.append(line)
-            
-            # Show tasks by project
-            for project_name, project_tasks in sorted(by_project.items()):
-                response.append(f"\n📁 {project_name}:")
-                for task in project_tasks:
-                    todo_id = task.get("id", "")
-                    title = task.get("title", "Untitled Todo").strip()
-                    tags = task.get("tags", "")
-                    due_date = task.get("due_date", "")
-                    
-                    line = f"  • {title}"
-                    if due_date and due_date != "missing value" and due_date != "":
-                        line += f" ⚠️ Due: {due_date.split(',')[0]}"
-                    if tags:
-                        line += f" #{tags.replace(',', ' #')}"
-                    line += f" (id: {todo_id})"
-                    response.append(line)
-        else:
-            # Standard formatting for other lists
-            for todo in todos:
-                todo_id = todo.get("id", "")
-                title = todo.get("title", "Untitled Todo").strip()
-                tags = todo.get("tags", "")
-                due_date = todo.get("due_date", "")
-                project_name = todo.get("list", "")
-                
-                # Build response line
-                line = f"\n• {title}"
-                
-                # Add project/area for Upcoming list
-                if list_name == "Upcoming" and project_name:
-                    line += f" [{project_name}]"
-                
-                # Add due date if present (except for Anytime which handles it above)
-                if due_date and due_date != "missing value" and due_date != "" and list_name != "Anytime":
-                    line += f" ⚠️ Due: {due_date.split(',')[0]}"
-                    
-                if tags:
-                    line += f" #{tags.replace(',', ' #')}"
-                line += f" (id: {todo_id})"
-                
-                response.append(line)
+                    response.append("  📝 " + notes_lines[0])
+                    for line in notes_lines[1:]:
+                        response.append(f"     {line}")
         
         # Add philosophy reminders for specific lists
         if list_name == "Today" and todo_count > 4:
@@ -248,7 +245,8 @@ def view_todos(list_name: str = "Today") -> str:
         return str(e)
     except Exception as e:
         logger.error(f"Error retrieving todos from {list_name}: {e}")
-        return f"Failed to retrieve todos from {list_name}: {str(e)}"
+        return f"Failed to retrieve todos from {list_name}: {e!s}"
+
 
 @mcp.tool(name="search-things3-todos")
 def search_things3_todos(query: str) -> str:
@@ -281,7 +279,8 @@ def search_things3_todos(query: str) -> str:
         return "\n".join(response)
     except Exception as e:
         logger.error(f"Error searching todos: {e}")
-        return f"Failed to search todos: {str(e)}"
+        return f"Failed to search todos: {e!s}"
+
 
 @mcp.tool(
     name="complete-things3-todo",
@@ -314,7 +313,8 @@ Try searching for the task first:
 - Use 'search-things3-todos' with keywords from the title"""
     except Exception as e:
         logger.error(f"Error completing todo: {e}")
-        return f"Failed to complete todo: {str(e)}"
+        return f"Failed to complete todo: {e!s}"
+
 
 @mcp.tool(name="create-things3-project")
 def create_things3_project(
@@ -354,7 +354,8 @@ def create_things3_project(
         return f"Created project '{title}' in Things3"
     except Exception as e:
         logger.error(f"Error creating project: {e}")
-        return f"Failed to create project in Things3: {str(e)}"
+        return f"Failed to create project in Things3: {e!s}"
+
 
 @mcp.tool(name="create-things3-todo")
 def create_things3_todo(
@@ -400,7 +401,8 @@ def create_things3_todo(
         return f"Created to-do '{title}' in Things3"
     except Exception as e:
         logger.error(f"Error creating todo: {e}")
-        return f"Failed to create to-do in Things3: {str(e)}"
+        return f"Failed to create to-do in Things3: {e!s}"
+
 
 @mcp.tool(
     name="update-things3-todo",
@@ -459,9 +461,9 @@ Note: Each device has its own token."""
         
         # Handle fields that can be cleared with empty string
         if when is not None:
-            params["when"] = when if when else ""
+            params["when"] = when or ""
         if deadline is not None:
-            params["deadline"] = deadline if deadline else ""
+            params["deadline"] = deadline or ""
         
         # Normal fields
         if title is not None:
@@ -504,14 +506,14 @@ Note: Each device has its own token."""
         return "\n".join(response_parts)
     except Exception as e:
         logger.error(f"Error updating todo: {e}")
-        return f"Failed to update todo: {str(e)}"
-
+        return f"Failed to update todo: {e!s}"
 
 
 # Main entry point for script
 def main():
     """Main entry point for the FastMCP server."""
     mcp.run()
+
 
 # Centralized X-Callback-URL handling
 def build_things_url(base_url: str, params: dict) -> str:
@@ -531,6 +533,7 @@ def build_things_url(base_url: str, params: dict) -> str:
     
     return f"{base_url}?{'&'.join(encoded_params)}"
 
+
 def call_things_url(url: str) -> None:
     """Execute a Things3 URL using the 'open' command."""
     import subprocess
@@ -538,6 +541,7 @@ def call_things_url(url: str) -> None:
         subprocess.run(['open', url], check=True, capture_output=True, text=True)
     except subprocess.CalledProcessError as e:
         raise RuntimeError(f"Failed to execute x-callback-url: {e}")
+
 
 # Run the server
 if __name__ == "__main__":

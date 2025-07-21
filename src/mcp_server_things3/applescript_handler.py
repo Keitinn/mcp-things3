@@ -1,9 +1,8 @@
-import subprocess
-from typing import List, Dict, Any, Optional
 import json
-import re
-import os
+import subprocess
 from pathlib import Path
+from typing import Any
+
 
 class AppleScriptHandler:
     """Handles AppleScript execution for Things3 data retrieval."""
@@ -80,7 +79,7 @@ class AppleScriptHandler:
         return text
     
     @staticmethod
-    def normalize_task(task: Dict[str, Any]) -> Dict[str, Any]:
+    def normalize_task(task: dict[str, Any]) -> dict[str, Any]:
         """
         Normalize task data from AppleScript by converting 'missing value' to None.
         """
@@ -96,10 +95,8 @@ class AppleScriptHandler:
                 
         return task
 
-
-
     @staticmethod
-    def get_todays_tasks() -> List[Dict[str, Any]]:
+    def get_todays_tasks() -> list[dict[str, Any]]:
         """
         Retrieves today's tasks from Things3 using AppleScript with JSON serialization.
         """
@@ -130,7 +127,7 @@ class AppleScriptHandler:
             return []
 
     @staticmethod
-    def get_projects() -> List[Dict[str, str]]:
+    def get_projects() -> list[dict[str, str]]:
         """
         Retrieves all projects from Things3 using AppleScript with JSON serialization.
         """
@@ -167,7 +164,6 @@ class AppleScriptHandler:
         except Exception:
             return False
 
-
     @staticmethod
     def complete_todo_by_id(todo_id: str) -> bool:
         """
@@ -192,7 +188,7 @@ class AppleScriptHandler:
             return False
 
     @staticmethod
-    def search_todos(query: str) -> List[Dict[str, Any]]:
+    def search_todos(query: str) -> list[dict[str, Any]]:
         """
         Search for todos by title or content using JSON serialization.
         """
@@ -227,8 +223,6 @@ class AppleScriptHandler:
             print(f"Error searching todos: {e}")
             return []
 
-
-
     @staticmethod
     def get_today_count() -> int:
         """
@@ -247,7 +241,7 @@ class AppleScriptHandler:
             return 0
     
     @staticmethod
-    def get_tasks_from_list(list_name: str) -> List[Dict[str, Any]]:
+    def get_tasks_from_list(list_name: str) -> list[dict[str, Any]]:
         """
         Retrieves tasks from any Things3 list using JSON serialization.
         Valid lists: Today, Inbox, Anytime, Upcoming, Someday, Logbook, Trash

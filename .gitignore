@@ -55,3 +55,6 @@ temp/
 
 # uv
 .python-version
+
+# Audio files
+*.mp3

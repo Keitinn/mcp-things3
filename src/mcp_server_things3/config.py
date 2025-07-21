@@ -1,7 +1,7 @@
 """Configuration management for Things3 MCP server using Pydantic Settings."""
 
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import Optional
 
 
 class Settings(BaseSettings):
@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     )
     
     # Auth token for Things3 URL scheme operations
-    auth_token: Optional[str] = None
+    auth_token: str | None = None
     
     @property
     def is_authenticated(self) -> bool:
