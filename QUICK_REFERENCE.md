@@ -4,10 +4,15 @@
 
 ### Discovery (No ID needed)
 ```
-view-inbox                 # Unprocessed items
-view-todos                 # Today list (with overload warning)
-view-upcoming              # Future scheduled tasks
-view-anytime               # Unscheduled active tasks  
+view-todos                 # View any list (defaults to Today)
+  list_name: "Today"       # Today's tasks (with overload warning)
+  list_name: "Inbox"       # Unprocessed items
+  list_name: "Upcoming"    # Future scheduled tasks
+  list_name: "Anytime"     # Unscheduled active tasks
+  list_name: "Someday"     # Deferred tasks
+  list_name: "Logbook"     # Completed tasks
+  list_name: "Trash"       # Deleted tasks
+
 view-projects              # All projects
 search-things3-todos       # Find by keyword
 ```
@@ -65,8 +70,8 @@ tomorrow, deadlines, repeating, all-projects, logged-projects
 
 ### Daily Review
 1. `view-todos` → See Today (get warned if >4)
-2. `view-upcoming` → Check what's coming
-3. `view-anytime` → Pick tasks to schedule
+2. `view-todos list_name="Upcoming"` → Check what's coming
+3. `view-todos list_name="Anytime"` → Pick tasks to schedule
 
 ### Task Management
 1. `search-things3-todos query="dentist"` → Find task

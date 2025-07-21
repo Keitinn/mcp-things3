@@ -97,36 +97,6 @@ class AppleScriptHandler:
         return task
 
 
-    @staticmethod
-    def get_inbox_tasks() -> List[Dict[str, Any]]:
-        """
-        Retrieves tasks from the Inbox using AppleScript with JSON serialization.
-        """
-        try:
-            # Use the new JSON-based AppleScript
-            result = AppleScriptHandler.run_script_file("get_inbox_tasks.applescript")
-            
-            # Parse JSON directly
-            if not result:
-                return []
-            
-            tasks = json.loads(result)
-            
-            # Normalize and ensure consistent field names
-            normalized_tasks = []
-            for task in tasks:
-                if "when" in task and "when_date" not in task:
-                    task["when_date"] = task["when"]
-                normalized_tasks.append(AppleScriptHandler.normalize_task(task))
-            
-            return normalized_tasks
-            
-        except json.JSONDecodeError as e:
-            print(f"Error parsing JSON from inbox tasks: {e}")
-            return []
-        except Exception as e:
-            print(f"Error retrieving inbox tasks: {e}")
-            return []
 
     @staticmethod
     def get_todays_tasks() -> List[Dict[str, Any]]:
@@ -257,61 +227,7 @@ class AppleScriptHandler:
             print(f"Error searching todos: {e}")
             return []
 
-    @staticmethod
-    def get_upcoming_tasks() -> List[Dict[str, Any]]:
-        """
-        Returns tasks from Upcoming list using JSON serialization.
-        """
-        try:
-            # Use the new JSON-based AppleScript
-            result = AppleScriptHandler.run_script_file("get_upcoming_tasks.applescript")
-            
-            # Parse JSON directly
-            if not result:
-                return []
-            
-            tasks = json.loads(result)
-            
-            # Normalize and ensure consistent field names
-            normalized_tasks = []
-            for task in tasks:
-                if "when" in task and "when_date" not in task:
-                    task["when_date"] = task["when"]
-                normalized_tasks.append(AppleScriptHandler.normalize_task(task))
-            
-            return normalized_tasks
-            
-        except json.JSONDecodeError as e:
-            print(f"Error parsing JSON from upcoming tasks: {e}")
-            return []
-        except Exception as e:
-            print(f"Error retrieving upcoming tasks: {e}")
-            return []
 
-    @staticmethod
-    def get_anytime_tasks() -> List[Dict[str, Any]]:
-        """
-        Returns unscheduled active tasks using JSON serialization.
-        """
-        try:
-            # Use the new JSON-based AppleScript
-            result = AppleScriptHandler.run_script_file("get_anytime_tasks.applescript")
-            
-            # Parse JSON directly
-            if not result:
-                return []
-            
-            tasks = json.loads(result)
-            
-            # Normalize all tasks
-            return [AppleScriptHandler.normalize_task(task) for task in tasks]
-            
-        except json.JSONDecodeError as e:
-            print(f"Error parsing JSON from anytime tasks: {e}")
-            return []
-        except Exception as e:
-            print(f"Error retrieving anytime tasks: {e}")
-            return []
 
     @staticmethod
     def get_today_count() -> int:

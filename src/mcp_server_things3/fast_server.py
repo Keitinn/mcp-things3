@@ -64,39 +64,6 @@ To get your token:
 2. Go to Settings → General → Enable Things URLs → Manage
 3. Copy your token (device-specific)"""
 
-@mcp.tool(name="view-inbox")
-def view_inbox() -> str:
-    """View all todos in the Things3 inbox"""
-    try:
-        # Validate Things3 is accessible
-        if not AppleScriptHandler.validate_things3_access():
-            return "Things3 is not available. Please ensure Things3 is installed and running."
-        
-        # Get inbox tasks
-        todos = AppleScriptHandler.get_inbox_tasks() or []
-        
-        if not todos:
-            return "No todos found in Things3 inbox."
-        
-        # Format response
-        response_lines = ["Todos in Things3 inbox:"]
-        for todo in todos:
-            todo_id = todo.get("id", "")
-            title = todo.get("title", "Untitled Todo").strip()
-            tags = todo.get("tags", "")
-            
-            line = f"\n• {title}"
-            if tags:
-                line += f" #{tags.replace(',', ' #')}"
-            line += f" (id: {todo_id})"
-            
-            response_lines.append(line)
-        
-        return "\n".join(response_lines)
-        
-    except Exception as e:
-        logger.error(f"Error retrieving inbox tasks: {e}")
-        return f"Failed to retrieve inbox tasks: {str(e)}"
 
 @mcp.tool(name="view-projects")
 def view_projects() -> str:
@@ -135,15 +102,36 @@ def view_todos(list_name: str = "Today") -> str:
                   - Logbook: Completed and canceled tasks
                   - Trash: Deleted tasks
     
-    PHILOSOPHY:
-    • Today is for commitments, not wishlists (max ~4 items)
-    • Inbox is for capture, not storage
-    • Anytime holds active tasks without deadlines
+    PHILOSOPHY BY LIST:
+    
+    Today:
+    • For focused commitments, not wishlists (max ~4 items)
+    • Tasks appear here on their scheduled date
+    • If overloaded, move flexible items to Anytime
+    
+    Inbox:
+    • For capture, not storage - process regularly
+    • Decide: do it, delegate it, defer it, or delete it
+    • Goal is inbox zero, not inbox storage
+    
+    Anytime:
+    • Most tasks should live here - ready when you are
+    • Having many tasks in Anytime is normal and good
+    • Pull from here to Today as capacity allows
+    • Tasks with deadlines (but no when date) stay here
+    • Deadlines ≠ scheduling
+    
+    Upcoming:
+    • Tasks scheduled for specific future dates (hibernating)
+    • For "I can't/won't start this until X date"
+    • Not everything needs a date - resist scheduling for scheduling's sake
+    • Does NOT include tasks with deadlines but no start date
     
     Examples:
     - view_todos() - Shows Today list
     - view_todos("Inbox") - Shows unprocessed tasks
     - view_todos("Anytime") - Shows active unscheduled tasks
+    - view_todos("Upcoming") - Shows future scheduled tasks
     """
     try:
         # Validate Things3 is accessible
@@ -154,38 +142,104 @@ def view_todos(list_name: str = "Today") -> str:
         if not todos:
             return f"No todos found in {list_name} list."
 
-        # Check for overload (only for Today list)
+        # Check for overload and set appropriate header
         todo_count = len(todos)
         if list_name == "Today":
             if todo_count > 4:
                 response = [f"⚠️ Today's Focus ({todo_count} items - consider reviewing):"]
             else:
                 response = [f"Today's Focus ({todo_count} items):"]
+        elif list_name == "Inbox":
+            response = [f"Inbox ({todo_count} items):"]
+        elif list_name == "Anytime":
+            response = [f"Anytime tasks ({todo_count} items):"]
+            response.append("💡 These active tasks are ready whenever you are. Pull to Today as capacity allows.")
+        elif list_name == "Upcoming":
+            response = [f"Upcoming scheduled tasks ({todo_count} items):"]
+            response.append("💡 These tasks are hibernating until their scheduled date arrives.")
         else:
             response = [f"{list_name} ({todo_count} items):"]
         
-        for todo in todos:
-            todo_id = todo.get("id", "")
-            title = todo.get("title", "Untitled Todo").strip()
-            tags = todo.get("tags", "")
+        # Special formatting for Anytime list (group by project/area)
+        if list_name == "Anytime":
+            # Group by project/area
+            loose_tasks = []
+            by_project = {}
             
-            # Build response line
-            line = f"\n• {title}"
-            if tags:
-                line += f" #{tags.replace(',', ' #')}"
-            line += f" (id: {todo_id})"
+            for task in todos:
+                project_name = task.get("list", "")
+                if project_name:
+                    if project_name not in by_project:
+                        by_project[project_name] = []
+                    by_project[project_name].append(task)
+                else:
+                    loose_tasks.append(task)
             
-            response.append(line)
+            # Show loose tasks first
+            if loose_tasks:
+                response.append("\n📌 No Project/Area:")
+                for task in loose_tasks:
+                    todo_id = task.get("id", "")
+                    title = task.get("title", "Untitled Todo").strip()
+                    tags = task.get("tags", "")
+                    due_date = task.get("due_date", "")
+                    
+                    line = f"  • {title}"
+                    if due_date and due_date != "missing value" and due_date != "":
+                        line += f" ⚠️ Due: {due_date.split(',')[0]}"
+                    if tags:
+                        line += f" #{tags.replace(',', ' #')}"
+                    line += f" (id: {todo_id})"
+                    response.append(line)
+            
+            # Show tasks by project
+            for project_name, project_tasks in sorted(by_project.items()):
+                response.append(f"\n📁 {project_name}:")
+                for task in project_tasks:
+                    todo_id = task.get("id", "")
+                    title = task.get("title", "Untitled Todo").strip()
+                    tags = task.get("tags", "")
+                    due_date = task.get("due_date", "")
+                    
+                    line = f"  • {title}"
+                    if due_date and due_date != "missing value" and due_date != "":
+                        line += f" ⚠️ Due: {due_date.split(',')[0]}"
+                    if tags:
+                        line += f" #{tags.replace(',', ' #')}"
+                    line += f" (id: {todo_id})"
+                    response.append(line)
+        else:
+            # Standard formatting for other lists
+            for todo in todos:
+                todo_id = todo.get("id", "")
+                title = todo.get("title", "Untitled Todo").strip()
+                tags = todo.get("tags", "")
+                due_date = todo.get("due_date", "")
+                project_name = todo.get("list", "")
+                
+                # Build response line
+                line = f"\n• {title}"
+                
+                # Add project/area for Upcoming list
+                if list_name == "Upcoming" and project_name:
+                    line += f" [{project_name}]"
+                
+                # Add due date if present (except for Anytime which handles it above)
+                if due_date and due_date != "missing value" and due_date != "" and list_name != "Anytime":
+                    line += f" ⚠️ Due: {due_date.split(',')[0]}"
+                    
+                if tags:
+                    line += f" #{tags.replace(',', ' #')}"
+                line += f" (id: {todo_id})"
+                
+                response.append(line)
         
-        if todo_count > 4:
+        # Add philosophy reminders for specific lists
+        if list_name == "Today" and todo_count > 4:
             response.append("\n💡 Today has more than 4 items. Consider:")
             response.append("• Which are truly TODAY vs. nice-to-have?")
             response.append("• Move flexible items to Anytime (update with when='')")
             response.append("• Use Evening section for time-specific tasks")
-
-        # Add philosophy reminders for specific lists
-        if list_name == "Today" and todo_count > 4:
-            response.append("\n💡 Tip: Move non-critical items to Anytime or schedule for later dates")
         elif list_name == "Inbox" and todo_count > 10:
             response.append("\n💡 Tip: Process your inbox - decide, don't just collect")
         
@@ -452,172 +506,7 @@ Note: Each device has its own token."""
         logger.error(f"Error updating todo: {e}")
         return f"Failed to update todo: {str(e)}"
 
-@mcp.tool(
-    name="view-upcoming",
-    description="""View scheduled future tasks in Things3's Upcoming list.
 
-WHAT YOU'LL SEE:
-• Tasks scheduled for specific future dates (hibernating until then)
-• Next 7 days shown separately at top
-• Does NOT include tasks with deadlines but no start date
-
-PHILOSOPHY:
-• Upcoming is for "I can't/won't start this until X date"
-• Not everything needs a date - resist scheduling for scheduling's sake
-• If unsure when to start something, leave in Anytime instead"""
-)
-def view_upcoming() -> str:
-    """View upcoming scheduled tasks."""
-    try:
-        # Validate Things3 is accessible
-        if not AppleScriptHandler.validate_things3_access():
-            return "Things3 is not available. Please ensure Things3 is installed and running."
-        
-        tasks = AppleScriptHandler.get_upcoming_tasks() or []
-        if not tasks:
-            return "No upcoming scheduled tasks in Things3."
-
-        response = ["Upcoming scheduled tasks in Things3:"]
-        response.append("\n💡 These tasks are hibernating until their scheduled date arrives.")
-        
-        # Group tasks by date
-        from datetime import datetime, timedelta
-        today = datetime.now().date()
-        tomorrow = today + timedelta(days=1)
-        next_week = today + timedelta(days=7)
-        
-        tomorrow_tasks = []
-        this_week_tasks = []
-        later_tasks = []
-        
-        for task in tasks:
-            when_str = task.get("when", "")
-            # Simple date parsing - in production might need better handling
-            if "Tomorrow" in when_str:
-                tomorrow_tasks.append(task)
-            else:
-                # For now, just put everything in this week
-                this_week_tasks.append(task)
-        
-        if tomorrow_tasks:
-            response.append("\n📅 Tomorrow:")
-            for task in tomorrow_tasks:
-                todo_id = task.get("id", "")
-                title = task.get("title", "Untitled")
-                tags = task.get("tags", "")
-                list_name = task.get("list", "")
-                
-                line = f"  • {title}"
-                if list_name:
-                    line += f" [{list_name}]"
-                if tags:
-                    line += f" #{tags.replace(',', ' #')}"
-                line += f" (id: {todo_id})"
-                response.append(line)
-        
-        if this_week_tasks:
-            response.append("\n📅 This Week:")
-            for task in this_week_tasks:
-                todo_id = task.get("id", "")
-                title = task.get("title", "Untitled")
-                tags = task.get("tags", "")
-                list_name = task.get("list", "")
-                when_date = task.get("when", "")
-                
-                line = f"  • {title}"
-                if list_name:
-                    line += f" [{list_name}]"
-                if tags:
-                    line += f" #{tags.replace(',', ' #')}"
-                line += f" (id: {todo_id})"
-                response.append(line)
-
-        return "\n".join(response)
-    except Exception as e:
-        logger.error(f"Error retrieving upcoming tasks: {e}")
-        return f"Failed to retrieve upcoming tasks: {str(e)}"
-
-@mcp.tool(
-    name="view-anytime",
-    description="""View all unscheduled active tasks in Things3's Anytime list.
-
-WHAT YOU'LL SEE:
-• All tasks without specific start dates
-• Tasks with deadlines (but no when date)
-• Today's tasks marked with a star
-• Organized by project/area
-
-PHILOSOPHY:
-• Most tasks should live here - ready when you are
-• Having many tasks in Anytime is normal and good
-• Pull from here to Today as capacity allows
-• Deadlines ≠ scheduling (deadline tasks stay here until you schedule them)"""
-)
-def view_anytime() -> str:
-    """View anytime tasks."""
-    try:
-        # Validate Things3 is accessible
-        if not AppleScriptHandler.validate_things3_access():
-            return "Things3 is not available. Please ensure Things3 is installed and running."
-        
-        tasks = AppleScriptHandler.get_anytime_tasks() or []
-        if not tasks:
-            return "No anytime tasks in Things3."
-
-        response = ["Anytime tasks in Things3:"]
-        response.append("\n💡 These active tasks are ready whenever you are. Pull to Today as capacity allows.")
-        
-        # Group by project/area
-        loose_tasks = []
-        by_project = {}
-        
-        for task in tasks:
-            list_name = task.get("list", "")
-            if list_name:
-                if list_name not in by_project:
-                    by_project[list_name] = []
-                by_project[list_name].append(task)
-            else:
-                loose_tasks.append(task)
-        
-        # Show loose tasks first
-        if loose_tasks:
-            response.append("\n📌 No Project/Area:")
-            for task in loose_tasks:
-                todo_id = task.get("id", "")
-                title = task.get("title", "Untitled")
-                tags = task.get("tags", "")
-                due_date = task.get("due_date", "")
-                
-                line = f"  • {title}"
-                if due_date:
-                    line += f" ⚠️ Due: {due_date.split(',')[0]}"  # Simple date format
-                if tags:
-                    line += f" #{tags.replace(',', ' #')}"
-                line += f" (id: {todo_id})"
-                response.append(line)
-        
-        # Show tasks by project
-        for project_name, project_tasks in sorted(by_project.items()):
-            response.append(f"\n📁 {project_name}:")
-            for task in project_tasks:
-                todo_id = task.get("id", "")
-                title = task.get("title", "Untitled")
-                tags = task.get("tags", "")
-                due_date = task.get("due_date", "")
-                
-                line = f"  • {title}"
-                if due_date and due_date != "missing value":
-                    line += f" ⚠️ Due: {due_date.split(',')[0]}"
-                if tags:
-                    line += f" #{tags.replace(',', ' #')}"
-                line += f" (id: {todo_id})"
-                response.append(line)
-
-        return "\n".join(response)
-    except Exception as e:
-        logger.error(f"Error retrieving anytime tasks: {e}")
-        return f"Failed to retrieve anytime tasks: {str(e)}"
 
 # Main entry point for script
 def main():
