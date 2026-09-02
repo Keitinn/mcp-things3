@@ -34,7 +34,7 @@ A robust MCP (Model Context Protocol) server providing comprehensive integration
    pip install -e .
    ```
 
-3. The server will be available as `mcp-server-things3`
+3. The server will be available as `things3-mcp`
 
 ### Auth Token Setup
 
@@ -186,7 +186,7 @@ Add to your MCP client configuration (e.g., Claude Desktop config):
 {
   "mcpServers": {
     "things3": {
-      "command": "mcp-server-things3",
+      "command": "things3-mcp",
       "args": []
     }
   }

@@ -30,7 +30,7 @@ export THINGS3_AUTH_TOKEN="your-token-here"
   "mcpServers": {
     "things3": {
       "command": "uv",
-      "args": ["run", "mcp-server-things3"],
+      "args": ["run", "things3-mcp"],
       "cwd": "/Users/darin/shit/mcp-things3"
     }
   }
