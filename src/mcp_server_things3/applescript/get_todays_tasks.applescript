@@ -65,7 +65,9 @@ on todos_to_json(theTodos)
 end todos_to_json
 
 tell application "Things3"
-    set todayTodos to to dos of list "Today"
+    -- "TMTodayListSource" is Things3's stable internal ID for the Today list;
+    -- unlike the localized name ("Today", "今日", etc.) it works in any language.
+    set todayTodos to to dos of list id "TMTodayListSource"
     
     if (count of todayTodos) is 0 then
         return "[]"

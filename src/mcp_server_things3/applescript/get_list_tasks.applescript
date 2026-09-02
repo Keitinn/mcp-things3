@@ -5,16 +5,36 @@ on run argv
     if (count of argv) < 1 then
         error "List name required as argument"
     end if
-    
+
     set listName to item 1 of argv
-    
-    -- Validate list name
-    if listName is not in {"Today", "Inbox", "Anytime", "Upcoming", "Someday", "Logbook", "Trash"} then
+
+    -- Map the locale-independent list key to Things3's stable internal list ID.
+    -- Things3 built-in lists keep these IDs across every UI language, so this
+    -- works regardless of the app's/system's localization (e.g. Japanese).
+    set listId to my list_id_for_name(listName)
+
+    return my get_tasks_from_list(listId)
+end run
+
+on list_id_for_name(listName)
+    if listName is "Today" then
+        return "TMTodayListSource"
+    else if listName is "Inbox" then
+        return "TMInboxListSource"
+    else if listName is "Anytime" then
+        return "TMNextListSource"
+    else if listName is "Upcoming" then
+        return "TMCalendarListSource"
+    else if listName is "Someday" then
+        return "TMSomedayListSource"
+    else if listName is "Logbook" then
+        return "TMLogbookListSource"
+    else if listName is "Trash" then
+        return "TMTrashListSource"
+    else
         error "Invalid list name. Valid lists: Today, Inbox, Anytime, Upcoming, Someday, Logbook, Trash"
     end if
-    
-    return my get_tasks_from_list(listName)
-end run
+end list_id_for_name
 
 on todo_to_dict(theTodo)
     set theDict to current application's NSMutableDictionary's dictionary()
@@ -97,11 +117,11 @@ on todos_to_json(theTodos)
     return jsonString as text
 end todos_to_json
 
-on get_tasks_from_list(listName)
+on get_tasks_from_list(listId)
     tell application "Things3"
         try
-            set theTodos to to dos of list listName
-            
+            set theTodos to to dos of list id listId
+
             if (count of theTodos) is 0 then
                 return "[]"
             else
