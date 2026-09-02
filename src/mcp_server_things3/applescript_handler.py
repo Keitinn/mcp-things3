@@ -230,7 +230,7 @@ class AppleScriptHandler:
         """
         script = '''
         tell application "Things3"
-            return count of to dos of list "Today"
+            return count of to dos of list id "TMTodayListSource"
         end tell
         '''
         
